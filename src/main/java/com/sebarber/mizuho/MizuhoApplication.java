@@ -14,6 +14,7 @@ import com.sebarber.mizuho.data.Dao;
 import com.sebarber.mizuho.data.PriceDao;
 import com.sebarber.mizuho.domain.Price;
 import com.sebarber.mizuho.domain.PricePk;
+import com.sebarber.mizuho.endpoint.PriceJMSPublisher;
 import com.sebarber.mizuho.endpoint.PriceServiceConsumer;
 import com.sebarber.mizuho.service.MockPriceFeed;
 import com.sebarber.mizuho.service.PriceService;
@@ -37,6 +38,9 @@ public class MizuhoApplication {
 
 	@Autowired
 	private PriceServiceConsumer priceServiceConsumer;
+	
+	@Autowired
+	private PriceJMSPublisher priceJMSPublisher;		
 
 	@Autowired
 	private ActiveMQComponent activeMQComponent;	
@@ -45,6 +49,11 @@ public class MizuhoApplication {
 		SpringApplication.run(MizuhoApplication.class, args);
 	}
 
+	@Bean
+	public PriceJMSPublisher priceJMSPublisher(){
+		return new PriceJMSPublisher(jmsEndpoints(), "activemq:topic:com.pricefeed.out", Constants.DATE_FORMAT);
+	}
+	
 	@Bean
 	public TimerTask mockPriceFeed() {
 		return mockPriceFeed; 
