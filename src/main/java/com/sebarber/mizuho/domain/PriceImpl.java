@@ -22,6 +22,7 @@ public class PriceImpl implements Price{
     
     public PriceImpl(){
     	this.pricePk = new PricePk(null, null);
+    	this.isActive = true;
     }
 
     public PriceImpl(String instrumentId, String vendorId, String idType, String instrumentType, String priceType, Date created, BigDecimal bid,
