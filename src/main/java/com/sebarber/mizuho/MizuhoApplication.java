@@ -16,7 +16,7 @@ import com.sebarber.mizuho.data.PriceDao;
 import com.sebarber.mizuho.domain.PriceImpl;
 import com.sebarber.mizuho.domain.PricePk;
 import com.sebarber.mizuho.endpoint.PriceJMSEndpoint;
-import com.sebarber.mizuho.service.MockPriceFeed;
+import com.sebarber.mizuho.mock.MockPriceFeed;
 import com.sebarber.mizuho.service.PriceService;
 import com.sebarber.mizuho.service.PriceServiceImpl;
 import com.sebarber.mizuho.service.TimerService;
@@ -27,9 +27,12 @@ import com.sebarber.mizuho.validator.Validator;
 
 @SpringBootApplication
 public class MizuhoApplication {
-
-	private final Dao<PricePk, PriceImpl> priceStore = new PriceDao();
 	
+	static{
+		System.setProperty("org.apache.activemq.SERIALIZABLE_PACKAGES", "com.sebarber.mizuho.domain,java.math,java.util");
+	}
+
+	private final Dao<PricePk, PriceImpl> priceStore = new PriceDao();	
 	private final Validator<PriceImpl> priceValidator = new PriceValidator();
 	private final TimerTask mockPriceFeed = new MockPriceFeed("bloomberg", 10, 2);
 	private final PriceServiceJMSConsumer<PriceImpl> priceServiceConsumer = new PriceServiceJMSConsumer<>();
@@ -65,7 +68,7 @@ public class MizuhoApplication {
 	@Bean
 	public ActiveMQComponent activeMQComponent() {
 		ActiveMQComponent activeMqComponent = new ActiveMQComponent();
-		activeMqComponent.setBrokerURL("vm://localhost?broker.persistent=false");
+		activeMqComponent.setBrokerURL("vm://localhost?broker.persistent=false");		
 		return activeMqComponent;
 	}
 
