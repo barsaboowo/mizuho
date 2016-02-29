@@ -10,23 +10,24 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.sebarber.mizuho.domain.Price;
-import com.sebarber.mizuho.validator.Validator;
+import com.sebarber.mizuho.service.PriceService;
 
-public class PriceJMSPublisher extends RouteBuilder {
-	private static final Logger LOG = Logger.getLogger(PriceJMSPublisher.class);
-	
+public class PriceJMSEndpoint<P extends Price> extends RouteBuilder {
+	private static final Logger LOG = Logger.getLogger(PriceJMSEndpoint.class);
+
 	@Autowired
-	private Validator<Price> priceValidator;
+	private PriceService<P> priceService;
 
-	private final GsonDataFormat format = new GsonDataFormat(Price.class);
+	private final GsonDataFormat format;
 
 	private final Set<String> jmsEndpoints;
 
-	private final String jmsTopic;
+	private final Class<P> priceClass;
 
-	public PriceJMSPublisher(Set<String> jmsEndpoints, String jmsTopic, String dateFormat) {
+	public PriceJMSEndpoint(Class<P> priceClass, Set<String> jmsEndpoints, String dateFormat) {
 		super();
-		this.jmsTopic = jmsTopic;
+		this.format = new GsonDataFormat(priceClass);		
+		this.priceClass = priceClass;
 		this.jmsEndpoints = jmsEndpoints;
 		format.setDateFormatPattern(dateFormat);
 	}
@@ -39,14 +40,10 @@ public class PriceJMSPublisher extends RouteBuilder {
 				
 				@Override
 				public void process(Exchange exchange) throws Exception {
-					Price p = exchange.getIn().getBody(Price.class);
-					LOG.info("Validating price " + p );
-					priceValidator.validate(p);
-					LOG.info("Price validated successfully, will be published to " + jmsTopic);
-					exchange.getIn().setHeader("instrumentId", p.getInstrumentId());
-					exchange.getIn().setHeader("vendorId", p.getVendorId());
+					P price = exchange.getIn().getBody(priceClass);
+					LOG.info("Received price via jms: " + price.getVendorId() + ", " + price.getInstrumentId());
 				}
-			}).to(jmsTopic);
+			}).bean(priceService, "addOrUpdate");
 		}
 
 	}

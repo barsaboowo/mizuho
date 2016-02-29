@@ -16,7 +16,7 @@ import com.sebarber.mizuho.service.PriceService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.sebarber.mizuho.domain.Price;
+import com.sebarber.mizuho.domain.PriceImpl;
 
 @RestController
 @RequestMapping("/prices")
@@ -24,12 +24,12 @@ public class PriceController {
 	private static final Logger LOG = Logger.getLogger(PriceController.class);
 
 	@Autowired
-	private PriceService priceService;
+	private PriceService<PriceImpl> priceService;
 
 	@RequestMapping(value = "/vendor/{vendorId}/list", method = RequestMethod.GET)
-	public Set<Price> getPricesForVendor(@PathVariable("vendorId") String vendorId) {
+	public Set<PriceImpl> getPricesForVendor(@PathVariable("vendorId") String vendorId) {
 		LOG.info("Fetching prices for vendor " + vendorId);
-		Set<Price> prices;
+		Set<PriceImpl> prices;
 		try {
 			prices = priceService.getPricesForVendor(vendorId);
 			LOG.info("Prices retrieved successfully");
@@ -41,9 +41,9 @@ public class PriceController {
 	}
 
 	@RequestMapping(value = "/instrument/{instrumentId}/list", method = RequestMethod.GET)
-	public Set<Price> getPricesForInstrumentId(@PathVariable("instrumentId") String instrumentId) {
+	public Set<PriceImpl> getPricesForInstrumentId(@PathVariable("instrumentId") String instrumentId) {
 		LOG.info("Fetching prices for instrument id " + instrumentId);
-		Set<Price> prices;
+		Set<PriceImpl> prices;
 		try {
 			prices = priceService.getPricesForInstrumentId(instrumentId);
 			LOG.info("Prices retrieved successfully");
@@ -55,11 +55,11 @@ public class PriceController {
 	}
 
 	@RequestMapping(value = "/create", method = RequestMethod.POST)
-	public ResponseEntity<String> create(@RequestBody Set<Price> prices) {
+	public ResponseEntity<String> create(@RequestBody Set<PriceImpl> prices) {
 		LOG.info("Creating " + prices.size() + " prices.");
 		int created = 0;
 		ResponseEntity<String> response = null;
-		for (Price p : prices) {
+		for (PriceImpl p : prices) {
 			try {
 				priceService.addOrUpdate(p);
 				++created;

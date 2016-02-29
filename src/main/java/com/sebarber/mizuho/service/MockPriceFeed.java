@@ -9,26 +9,27 @@ import org.apache.camel.ProducerTemplate;
 import org.apache.log4j.Logger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.sebarber.mizuho.domain.Price;
+import com.sebarber.mizuho.domain.PriceImpl;
 import com.sebarber.mizuho.utils.Constants;
 import com.sebarber.mizuho.utils.JSONUtils;
 
 public class MockPriceFeed implements TimerTask {
 	private static final Logger LOG = Logger.getLogger(MockPriceFeed.class);
- 
-	private final String vendorId;
+ 	
 	private final long delayInSeconds;
 	private final long periodInSeconds;	
 	
 	@Produce(uri="activemq:topic:com.pricefeed.bloomberg")
-	private ProducerTemplate producerTemplate;
+	private ProducerTemplate producerTemplateBloomberg;
+	
+	@Produce(uri="activemq:topic:com.pricefeed.reuters")
+	private ProducerTemplate producerTemplateReuters;
 	
 	private final JSONUtils jsonUtils = new JSONUtils();
 	
 
 	public MockPriceFeed(String vendorId, long delayInSeconds, long periodInSeconds) {
 		super();
-		this.vendorId = vendorId;
 		this.delayInSeconds = delayInSeconds;
 		this.periodInSeconds = periodInSeconds;
 	}
@@ -36,18 +37,20 @@ public class MockPriceFeed implements TimerTask {
 	@Override
 	public void runTask() {
 		try {
-			Price price = createMockPrice();
-			producerTemplate.sendBodyAndHeader(jsonUtils.mapToJson(price), "vendorId", vendorId);
+			PriceImpl price = createMockPrice("Bloomberg");
+			producerTemplateBloomberg.sendBodyAndHeader(jsonUtils.mapToJson(price), "vendorId", "Bloomberg");
+			price = createMockPrice("Reuters");
+			producerTemplateReuters.sendBodyAndHeader(jsonUtils.mapToJson(price), "vendorId", "Reuters");
 		} catch (CamelExecutionException | JsonProcessingException e) {
 			LOG.error("Unable to parse price", e);
 		}
 		
 	}
 
-	private Price createMockPrice() {
+	private PriceImpl createMockPrice(String vendorId) {
 		int position = (int) (Math.random() * 5);
 		String isin = Constants.TEST_ISINS.get(position);
-		return new Price(isin, vendorId, "ISIN", "Government Bond", "Clean Price", new Date(), generatePrice(), generatePrice());
+		return new PriceImpl(isin, vendorId, "ISIN", "Government Bond", "Clean Price", new Date(), generatePrice(), generatePrice(), true);
 	}
 
 	private BigDecimal generatePrice() {
@@ -56,7 +59,7 @@ public class MockPriceFeed implements TimerTask {
 
 	@Override
 	public String getServicename() {
-		return "Mock price feed: " + vendorId;
+		return "Mock price feed";
 	}
 
 	@Override

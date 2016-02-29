@@ -2,12 +2,12 @@ package com.sebarber.mizuho.validator;
 
 import javax.validation.ValidationException;
 
-import com.sebarber.mizuho.domain.Price;
+import com.sebarber.mizuho.domain.PriceImpl;
 
-public class PriceValidator implements Validator<Price> {
+public class PriceValidator implements Validator<PriceImpl> {
 
 	@Override
-	public void validate(Price entity) throws ValidationException {
+	public void validate(PriceImpl entity) throws ValidationException {
 		if(entity.getPricePk() == null){
 			throw new ValidationException("Price does not have pk");
 		}

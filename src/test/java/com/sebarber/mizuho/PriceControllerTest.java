@@ -13,12 +13,12 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import com.google.common.collect.Sets;
-import com.sebarber.mizuho.domain.Price;
+import com.sebarber.mizuho.domain.PriceImpl;
 
 
 public class PriceControllerTest extends ControllerTest {
-	private static final Price testPrice = new Price("instrumentId", "vendorId", "idType", "instrumentType",
-			"priceType", new Date(), BigDecimal.ONE, BigDecimal.TEN);
+	private static final PriceImpl testPrice = new PriceImpl("instrumentId", "vendorId", "idType", "instrumentType",
+			"priceType", new Date(), BigDecimal.ONE, BigDecimal.TEN, true);
 
 	@Before
 	public void setup() {
@@ -27,7 +27,7 @@ public class PriceControllerTest extends ControllerTest {
 
 	@Test
 	public void testPriceController() throws Exception {
-		Set<Price> prices = Sets.newHashSet(testPrice);
+		Set<PriceImpl> prices = Sets.newHashSet(testPrice);
 		String json = jsonUtils.mapToJson(prices);
 
 		String uri = "/prices/create";

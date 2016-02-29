@@ -1,6 +1,7 @@
 package com.sebarber.mizuho;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Set;
 
@@ -10,7 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.sebarber.mizuho.data.PriceDao;
-import com.sebarber.mizuho.domain.Price;
+import com.sebarber.mizuho.domain.PriceImpl;
 import com.sebarber.mizuho.service.PriceServiceImpl;
 import com.sebarber.mizuho.utils.Constants;
 import com.sebarber.mizuho.validator.PriceValidator;
@@ -21,17 +22,17 @@ public class PriceServiceTest {
 	
 	private static final Date DATE_31_DAYS_AGO = new Date(System.currentTimeMillis() - (Constants.ONE_DAY_IN_MILLIS * 31));
 
-	private static final Price testPrice = new Price("instrumentId", "vendorId", "idType", "instrumentType",
-			"priceType", DATE_31_DAYS_AGO, BigDecimal.ONE, BigDecimal.TEN);
+	private static final PriceImpl testPrice = new PriceImpl("instrumentId", "vendorId", "idType", "instrumentType",
+			"priceType", DATE_31_DAYS_AGO, BigDecimal.ONE, BigDecimal.TEN, true);
 	
-	private static final Price testPrice2 = new Price(null, "vendorId", "idType", "instrumentType",
-			"priceType", DATE_31_DAYS_AGO, BigDecimal.ONE, BigDecimal.TEN);
+	private static final PriceImpl testPrice2 = new PriceImpl(null, "vendorId", "idType", "instrumentType",
+			"priceType", DATE_31_DAYS_AGO, BigDecimal.ONE, BigDecimal.TEN, true);
 	
-	private static final Price testPrice3 = new Price("instrumentId", null, "idType", "instrumentType",
-			"priceType", DATE_31_DAYS_AGO, BigDecimal.ONE, BigDecimal.TEN);
+	private static final PriceImpl testPrice3 = new PriceImpl("instrumentId", null, "idType", "instrumentType",
+			"priceType", DATE_31_DAYS_AGO, BigDecimal.ONE, BigDecimal.TEN, true);
 	
-	private static final Price testPrice4 = new Price("instrumentId", "vendorId", "idType", "instrumentType",
-			"priceType", null, BigDecimal.ONE, BigDecimal.TEN);
+	private static final PriceImpl testPrice4 = new PriceImpl("instrumentId", "vendorId", "idType", "instrumentType",
+			"priceType", null, BigDecimal.ONE, BigDecimal.TEN, true);
 
 	private PriceServiceImpl priceService;
 	private final PriceValidator priceValidator = new PriceValidator();
@@ -40,14 +41,14 @@ public class PriceServiceTest {
 	public void setup() {
 		PriceDao priceDao = new PriceDao();
 		priceDao.put(testPrice.getPricePk(), testPrice);
-		priceService = new PriceServiceImpl(30, 60, 60, priceDao);
+		priceService = new PriceServiceImpl(30, 60, 60, priceDao, Collections.emptySet());
 		priceService.setPriceValidator(priceValidator);
 	}
 
 	@Test
 	public void testPriceService() {
 		//Test that priming has happened
-		Set<Price> prices = priceService.getPricesForInstrumentId(testPrice.getInstrumentId());
+		Set<PriceImpl> prices = priceService.getPricesForInstrumentId(testPrice.getInstrumentId());
 		Assert.assertTrue(prices.size() == 1);
 		Assert.assertTrue(prices.contains(testPrice));
 		

@@ -11,24 +11,26 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.collect.HashMultimap;
+import com.sebarber.mizuho.consumer.Consumer;
 import com.sebarber.mizuho.data.Dao;
-import com.sebarber.mizuho.domain.Price;
+import com.sebarber.mizuho.domain.PriceImpl;
 import com.sebarber.mizuho.domain.PricePk;
 import com.sebarber.mizuho.utils.Constants;
 import com.sebarber.mizuho.validator.Validator;
 
-public class PriceServiceImpl implements PriceService, TimerTask {
+public class PriceServiceImpl implements PriceService<PriceImpl>, TimerTask {
 	private static final Logger LOG = Logger.getLogger(PriceServiceImpl.class);
 
-	private Dao<PricePk, Price> priceStore;
+	private final Dao<PricePk, PriceImpl> priceStore;
+	private final Set<Consumer<PriceImpl>> consumers;
 
 	@Autowired
-	private Validator<Price> priceValidator;
+	private Validator<PriceImpl> priceValidator;
 
 	private ReadWriteLock pricesLock = new ReentrantReadWriteLock(true);
 
-	private final HashMultimap<String, Price> pricesByVendor = HashMultimap.create();
-	private final HashMultimap<String, Price> pricesByInstrument = HashMultimap.create();
+	private final HashMultimap<String, PriceImpl> pricesByVendor = HashMultimap.create();
+	private final HashMultimap<String, PriceImpl> pricesByInstrument = HashMultimap.create();
 
 	private final long cacheAgeInDays;
 	private final long cacheAgeInMillis;
@@ -36,12 +38,15 @@ public class PriceServiceImpl implements PriceService, TimerTask {
 	private final long timerPeriodSeconds;
 	private boolean isInit = false;
 
-	public PriceServiceImpl(long cacheAgeInDays, long timerDelaySeconds, long timerPeriodSeconds, Dao<PricePk, Price> priceStore) {
+	public PriceServiceImpl(long cacheAgeInDays, long timerDelaySeconds, long timerPeriodSeconds, 
+			Dao<PricePk, PriceImpl> priceStore, Set<Consumer<PriceImpl>> priceConsumers) {
 
 		LOG.info("Cache age in days = " + cacheAgeInDays);
 		LOG.info("Timer delay in seconds = " + timerDelaySeconds);
 		LOG.info("Timer period in seconds = " + timerPeriodSeconds);
+		
 		this.priceStore = priceStore;
+		this.consumers = priceConsumers;
 
 		this.cacheAgeInDays = cacheAgeInDays;
 		this.cacheAgeInMillis = cacheAgeInDays * Constants.ONE_DAY_IN_MILLIS;
@@ -59,9 +64,10 @@ public class PriceServiceImpl implements PriceService, TimerTask {
 		try {
 			pricesLock.writeLock().lock();
 
-			for (Price p : priceStore.getAll()) {
+			for (PriceImpl p : priceStore.getAll()) {
 				pricesByVendor.put(p.getVendorId(), p);
 				pricesByInstrument.put(p.getInstrumentId(), p);
+				publish(p);
 			}
 
 			LOG.info("Cache priming is complete");
@@ -75,12 +81,12 @@ public class PriceServiceImpl implements PriceService, TimerTask {
 	}
 
 	@Override
-	public Set<Price> getPricesForVendor(String vendor) {
-		Set<Price> prices;
+	public Set<PriceImpl> getPricesForVendor(String vendor) {
+		Set<PriceImpl> prices;
 		LOG.info("Getting prices for vendor " + vendor);
 		try {
 			pricesLock.readLock().lock();
-			prices = new HashSet<Price>(pricesByVendor.get(vendor));
+			prices = new HashSet<PriceImpl>(pricesByVendor.get(vendor));
 		} catch (Exception e) {
 			LOG.error("Unable to get price for vendor " + vendor);
 			throw e;
@@ -92,12 +98,12 @@ public class PriceServiceImpl implements PriceService, TimerTask {
 	}
 
 	@Override
-	public Set<Price> getPricesForInstrumentId(String instrument) {
-		Set<Price> prices;
+	public Set<PriceImpl> getPricesForInstrumentId(String instrument) {
+		Set<PriceImpl> prices;
 		LOG.info("Getting prices for instrument " + instrument);
 		try {
 			pricesLock.readLock().lock();
-			prices = new HashSet<Price>(pricesByInstrument.get(instrument));
+			prices = new HashSet<PriceImpl>(pricesByInstrument.get(instrument));
 		} catch (Exception e) {
 			LOG.error("Unable to get price for instrument id " + instrument);
 			throw e;
@@ -109,7 +115,7 @@ public class PriceServiceImpl implements PriceService, TimerTask {
 	}
 
 	@Override
-	public void addOrUpdate(Price price) {
+	public void addOrUpdate(PriceImpl price) {
 		LOG.info("Adding price with primary key " + price.getPricePk());
 		try {
 			priceValidator.validate(price);
@@ -128,6 +134,7 @@ public class PriceServiceImpl implements PriceService, TimerTask {
 				//Exception is thrown if lock is not locked
 			}
 		}
+		publish(price);
 
 	}
 
@@ -137,12 +144,12 @@ public class PriceServiceImpl implements PriceService, TimerTask {
 		final Date dateBefore = new Date(System.currentTimeMillis() - cacheAgeInMillis);
 		try {
 			pricesLock.readLock().lock();
-			Set<Price> prices = pricesByInstrument.values().stream().filter(p -> p.getCreated().before(dateBefore))
+			Set<PriceImpl> prices = pricesByInstrument.values().stream().filter(p -> p.getCreated().before(dateBefore))
 					.collect(Collectors.toSet());
 			pricesLock.readLock().unlock();
 			if (!prices.isEmpty()) {
 				LOG.info("Deleting " + prices.size() + " old prices");
-				for (Price p : prices) {
+				for (PriceImpl p : prices) {
 					delete(p);
 				}
 
@@ -161,30 +168,32 @@ public class PriceServiceImpl implements PriceService, TimerTask {
 	}
 
 	@Override
-	public void delete(Price price) {
+	public void delete(PriceImpl price) {
 		LOG.info("Deleting price with primary key " + price.getPricePk());
 		try {
 			pricesLock.writeLock().lock();
 			priceStore.delete(price.getPricePk());
 			pricesByVendor.remove(price.getVendorId(), price);
 			pricesByInstrument.remove(price.getInstrumentId(), price);
-			LOG.info("Price added successfully");
+			LOG.info("Price removed successfully");
 		} catch (Exception e) {
 			LOG.error("Unable to remove price with pk " + price.getPricePk(), e);
 			throw e;
 		} finally {
 			pricesLock.writeLock().unlock();
 		}
-
+		LOG.info("Publishing inactive price downstream");
+		price.setActive(false);
+		publish(price);
 	}
 
 	@Override
-	public Set<Price> getAllPrices() {
+	public Set<PriceImpl> getAllPrices() {
 		LOG.info("Getting all prices");
-		Set<Price> prices;
+		Set<PriceImpl> prices;
 		try {
 			pricesLock.readLock().lock();
-			prices = new HashSet<Price>(pricesByVendor.values());
+			prices = new HashSet<PriceImpl>(pricesByVendor.values());
 			LOG.info("Prices retrieved successfully");
 		} catch (Exception e) {
 			LOG.error("Unable to retrieve all prices", e);
@@ -201,11 +210,11 @@ public class PriceServiceImpl implements PriceService, TimerTask {
 		return "Price Service";
 	}
 
-	public Validator<Price> getPriceValidator() {
+	public Validator<PriceImpl> getPriceValidator() {
 		return priceValidator;
 	}
 
-	public void setPriceValidator(Validator<Price> priceValidator) {
+	public void setPriceValidator(Validator<PriceImpl> priceValidator) {
 		this.priceValidator = priceValidator;
 	}
 
@@ -217,6 +226,19 @@ public class PriceServiceImpl implements PriceService, TimerTask {
 	@Override
 	public long getPeriodInSeconds() {
 		return timerPeriodSeconds;
+	}
+
+	@Override
+	public void publish(PriceImpl price) {
+		for(Consumer<PriceImpl> consumer : consumers){
+			LOG.info("Publishing to " + consumer.getConsumerName());
+			try{
+				consumer.consume(price);
+			}catch(Exception e){
+				LOG.error("Unable to publish to " + consumer.getConsumerName(), e);
+			}
+		}
+		
 	}
 
 }

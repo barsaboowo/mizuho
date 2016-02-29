@@ -8,15 +8,15 @@ import org.junit.Test;
 
 import com.sebarber.mizuho.data.Dao;
 import com.sebarber.mizuho.data.PriceDao;
-import com.sebarber.mizuho.domain.Price;
+import com.sebarber.mizuho.domain.PriceImpl;
 import com.sebarber.mizuho.domain.PricePk;
 
 public class PriceDaoTest {
 
-	private static final Price testPrice = new Price("instrumentId", "vendorId", "idType", "instrumentType",
-			"priceType", new Date(), BigDecimal.ONE, BigDecimal.TEN);
+	private static final PriceImpl testPrice = new PriceImpl("instrumentId", "vendorId", "idType", "instrumentType",
+			"priceType", new Date(), BigDecimal.ONE, BigDecimal.TEN, true);
 
-	private final Dao<PricePk, Price> priceDao = new PriceDao();
+	private final Dao<PricePk, PriceImpl> priceDao = new PriceDao();
 
 	@Test
 	public void testPriceDao() {
