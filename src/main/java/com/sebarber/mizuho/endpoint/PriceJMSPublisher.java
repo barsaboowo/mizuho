@@ -43,6 +43,8 @@ public class PriceJMSPublisher extends RouteBuilder {
 					LOG.info("Validating price " + p );
 					priceValidator.validate(p);
 					LOG.info("Price validated successfully, will be published to " + jmsTopic);
+					exchange.getIn().setHeader("instrumentId", p.getInstrumentId());
+					exchange.getIn().setHeader("vendorId", p.getVendorId());
 				}
 			}).to(jmsTopic);
 		}
