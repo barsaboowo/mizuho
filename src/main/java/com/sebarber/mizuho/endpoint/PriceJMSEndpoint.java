@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.sebarber.mizuho.domain.Price;
 import com.sebarber.mizuho.service.PriceService;
+import com.sebarber.mizuho.utils.Constants;
 
 public class PriceJMSEndpoint<P extends Price> extends RouteBuilder {
 	private static final Logger LOG = Logger.getLogger(PriceJMSEndpoint.class);
@@ -34,6 +35,11 @@ public class PriceJMSEndpoint<P extends Price> extends RouteBuilder {
 
 	@Override
 	public void configure() throws Exception {
+		
+		errorHandler(deadLetterChannel(Constants.DEAD_LETTER_CHANNEL)
+			    .maximumRedeliveries(3).redeliveryDelay(5000));
+
+		
 		for (String jms : jmsEndpoints) {
 			LOG.info("Setting publish route for " + jms);
 			from(jms).unmarshal(format).process(new Processor() {
@@ -45,7 +51,8 @@ public class PriceJMSEndpoint<P extends Price> extends RouteBuilder {
 				}
 			}).bean(priceService, "addOrUpdate");
 		}
-
+		
+		
 	}
 
 }

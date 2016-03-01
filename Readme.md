@@ -32,6 +32,8 @@ Given an object message with a JSON body in the following format, a price will b
 
 {"pricePk":{"instrumentId":"DE000JPM85H5","vendorId":"Bloomberg"},"idType":"ISIN","instrumentType":"Government Bond","priceType":"Clean Price","created":1456775824708,"bid":93.40,"ask":45.75,"vendorId":"Bloomberg","instrumentId":"DE000JPM85H5","active":true}
 
+If the price cannot be parsed or something else is wrong, the message will be delivered to a dead letter queue **activemq:queue:dead**
+
 **b**.  Using the REST service endpoint **/prices/create**, a POST operation with a JSON string payload as follows can be used to create a set of prices:
 
 [{"pricePk":{"instrumentId":"DE000JPM85H5","vendorId":"Reuters"},"idType":"ISIN","instrumentType":"Government Bond","priceType":"Clean Price","created":1456775828719,"bid":80.63,"ask":66.27,"vendorId":"Reuters","instrumentId":"DE000JPM85H5","active":true},{"pricePk":{"instrumentId":"DE000JPM85H5","vendorId":"Bloomberg"},"idType":"ISIN","instrumentType":"Government Bond","priceType":"Clean Price","created":1456775824708,"bid":93.40,"ask":45.75,"vendorId":"Bloomberg","instrumentId":"DE000JPM85H5","active":true}]
